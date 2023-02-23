@@ -1,34 +1,33 @@
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
+import jakarta.servlet.http.HttpFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.TimeZone;
+import java.time.ZoneId;
 
 @WebFilter("/time")
-public class TimezoneValidateFilter implements Filter {
-    @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
-        Filter.super.init(filterConfig);
-    }
+public class TimezoneValidateFilter extends HttpFilter {
 
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws ServletException, IOException {
-        String timezone = request.getParameter("timezone");
+    protected void doFilter(HttpServletRequest req,
+                            HttpServletResponse resp,
+                            FilterChain chain) throws IOException, ServletException{
+        String timezone = req.getParameter("timezone");
+        try{
+            timezone = String.join("+", timezone.split(" "));
+        }catch (NullPointerException e){
+            timezone = "UTC";
+        }
         if (timezone != null && !isValidTimezone(timezone)) {
-            HttpServletResponse httpResponse = (HttpServletResponse) response;
-            httpResponse.sendError(400, "Invalid timezone");
+            resp.sendError(400, "Invalid timezone");
         } else {
-            chain.doFilter(request, response);
+            chain.doFilter(req, resp);
         }
     }
 
-    @Override
-    public void destroy() {
-        Filter.super.destroy();
-    }
     private boolean isValidTimezone(String timezone) {
         try {
-            TimeZone.getTimeZone("GMT" + timezone);
+            ZoneId zoneId = ZoneId.of(timezone);
             return true;
         } catch (Exception e) {
             return false;
